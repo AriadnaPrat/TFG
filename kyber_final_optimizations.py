@@ -56,7 +56,7 @@ def build_residue_tree(tree, node, mod_value, depth):
     try:
         r1 = mod(-node.residue, mod_value).sqrt()  # r1 = sqrt(mod(-r, q))
         r_inv = R(r1)^-1  # r1^-1
-        ri = (node.residue * R(r1)^-1) % mod_value  # ri = r * r1^-1
+        ri = (node.residue * r_inv) % mod_value  # ri = r * r1^-1
 
         tree.insert(node.residue, left_residue=ri, right_residue=r1)
 
@@ -75,8 +75,6 @@ def NTT_prev(poly1, node, depth, list_):
         return None
     else:
         d=depth//2
-        left = node.left
-        right = node.right
         new_poly1 = PR(poly1.list()) % ( X^depth + node.residue)
         b = NTT_prev(new_poly1, node.left, d, list_) 
         c = NTT_prev(new_poly1, node.right, d, list_) 
