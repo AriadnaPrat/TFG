@@ -1,18 +1,22 @@
+# SageMath implementation of polynomial multiplication using CRT in Z_q[X]/(X^d + α)
 import time
 import numpy as np
 import random
-
-d = 256
-q = 3329  
-R = IntegerModRing(q)
-PR.<X> = PolynomialRing(R)  
-Rk = PR.quotient(X^d + 1)
+# Parámetros de Kyber-1024
+q = 3329  # Módulo primo
+R = IntegerModRing(q)  # Anillo de enteros módulo q
+n = 256  # Dimensión del polinomio
+PR.<X> = PolynomialRing(R)  # Anillo de polinomios en Z_q
+Rk = PR.quotient(X^n + 1)  # Anillo cociente Z_q[X]/(X^n + 1)
+k = 4  # Parámetro de Kyber
+eta = 2  # Parámetro de ruido binomial
+du, dv = 11, 5  # Parámetros de compresión
 
 class ResidueTreeNode:
     def __init__(self, residue):
-        self.residue = residue  
-        self.left = None  
-        self.right = None 
+        self.residue = residue  # Residuo almacenado en el nodo
+        self.left = None  # Hijo izquierdo
+        self.right = None  # Hijo derecho
 
 class ResidueTree:
     def __init__(self, root_residue):
@@ -43,9 +47,11 @@ class ResidueTree:
             self.display(node.right, level + 1)
 
 
-# Function to compute a mod (X^{d/2} - r) and a mod (X^{d/2} + r)
+
+r_list=[]
 def build_residue_tree(tree, node, mod_value, depth):
     if depth == 2:
+        r_list.append(node.residue)
         return
 
     try:
@@ -63,61 +69,75 @@ def build_residue_tree(tree, node, mod_value, depth):
     except ValueError:
         return
     
-def NTT(poly1, poly2, node, depth, list_):
+def NTT_prev(poly1, node, depth, list_):
     if depth == 2:
-        new_poly = (poly1 * poly2) % ( X^depth + node.residue)
+        new_poly = PR(poly1.list()) % ( X^depth + node.residue)
         list_.append(new_poly)
         return None
     else:
-        n = depth // 2
+        d=depth//2
         left = node.left
         right = node.right
-        new_poly1 = (poly1) % ( X^depth + node.residue)
-        new_poly2 = (poly2) % ( X^depth + node.residue)
-        b = NTT(new_poly1, new_poly2, node.left, n, list_) 
-        c = NTT(new_poly1, new_poly2, node.right, n, list_) 
+        new_poly1 = PR(poly1.list()) % ( X^depth + node.residue)
+        b = NTT_prev(new_poly1, node.left, d, list_) 
+        c = NTT_prev(new_poly1, node.right, d, list_) 
         return None
 
-def INTT(ntt_list, node, depth):
-    if depth == 4:
-        a = [0] * depth
-        r = node.right
-        r = R(r.residue)
+def INTT_prev(ntt_list, node, depth):
+    if depth==4:
+        a=[0]*depth
+        r=node.right
+        r=R(r.residue)
         b, c = ntt_list
-        for i in range(0, depth // 2):
+        for i in range(0, depth//2):
             a[i] = (b[i] + c[i]) / 2
-            a[i + depth // 2] = (r^(-1) * (b[i] - c[i])) / 2
+            a[i + depth//2] = (r^(-1) * (b[i] - c[i])) / 2
         return PR(a)
     else:
-        b = INTT(ntt_list[:depth // 4], node.left, depth // 2) 
-        c = INTT(ntt_list[depth // 4:], node.right, depth // 2) 
+        b = INTT_prev(ntt_list[:depth//4], node.left, depth//2) 
+        c = INTT_prev(ntt_list[depth//4:], node.right, depth//2) 
         r = node.right
-        r = r.residue
+        r=r.residue
         a = [0] * depth  
 
-        for i in range(0, depth // 2):
+        for i in range(0, depth//2):
             a[i] = (b[i] + c[i]) / 2
-            a[i + depth // 2] = (r^(-1) * (b[i] - c[i])) / 2
+            a[i + depth//2] = (r^(-1) * (b[i] - c[i])) / 2
 
         return PR(a)  
+def NTT(poly):
+    list_ = []
+    NTT_prev(poly, tree.root, n, list_)
+    return list_
 
-def multiply(a, b, tree, dd):
-    list_ntt = []
-    NTT(a, b, tree.root, dd, list_ntt)
-    intt = INTT(list_ntt, tree.root, dd)
+def INTT(poly):
+    result = INTT_prev(poly, tree.root, n)
+    return result
+def multiply(a, b):
+    list_a = NTT(a)
+    list_b = NTT(b)
+    list_ntt=[]
+    
+    listt = r_list[::-1]
+    
+    for i in range(0, n//2):
+        list_ntt.append((list_a[i]*list_b[i]) % (X^2+listt[i]))
+    
+    intt = INTT(list_ntt)
     return intt
 
+
 # Generar un polinomio f de grado d (256)
-f = PR(list(np.random.randint(0, 2, d)))
+f = PR(list(np.random.randint(0, 2, n)))
 
 # Medir tiempo para construir el árbol y realizar la multiplicación NTT
 start_tree_build = time.time()
 tree = ResidueTree(1)
-build_residue_tree(tree, tree.root, q, depth=d)
+build_residue_tree(tree, tree.root, q, depth=n)
 end_tree_build = time.time()
 
 start_multiply = time.time()
-result = multiply(f, f, tree, d)
+result = multiply(f, f)
 end_multiply = time.time()
 
 # Medir el tiempo de la multiplicación normal
@@ -140,18 +160,6 @@ def multiplicacion_manual(p, q):
             resultado += coef_p * coef_q * x**(exp_p + exp_q)
     return resultado
 
-
-
-
-
-
-
-d = 256
-q = 3329  # Prime modulus
-R = IntegerModRing(q)  # Anillo de enteros módulo q
-PR.<X> = PolynomialRing(R)  # Anillo de polinomios en Z_q
-Rk = PR.quotient(X^d + 1)  
-
 def multiplicacion_manual(p, q):
     resultado = 0
     for exp_p, coef_p in p.dict().items():
@@ -162,18 +170,10 @@ def multiplicacion_manual(p, q):
     return resultado
 
 
-# Medir tiempo para la multiplicación manual
 start_manual = time.time()
 resultado_manual = Rk(multiplicacion_manual(f, f))
 end_manual = time.time()
 
-# Medir tiempo para la multiplicación normal
-start_normal = time.time()
-g = f * f
-end_normal = time.time()
-
 # Imprimir los resultados y los tiempos
 print("Resultado manual:", resultado_manual)
-print("Resultado normal:", Rk(g))
 print("\nTiempo de multiplicación manual:", end_manual - start_manual, "segundos")
-print("Tiempo de multiplicación normal:", end_normal - start_normal, "segundos")
