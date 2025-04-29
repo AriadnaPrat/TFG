@@ -129,7 +129,7 @@ def multiply(a, b):
 
 
 def binomial(eta):
-    return random.randint(-eta, eta) 
+    return random.randint(0, eta + 1) 
 
 def binomial_sample(eta):
     return Rk([binomial(eta) for _ in range(d)])
@@ -171,7 +171,11 @@ def INTT_vector(vector):
     return [INTT(i) for i in vector]
 
 def is_in_beta_range(v, beta_bar):
-    return all(-beta_bar <= x <= beta_bar for x in v)
+    for x in v:
+        if not all(i <= beta_bar for i in x):
+            return False
+
+    return True 
 
 class Prover:
     def __init__(self):
@@ -192,6 +196,8 @@ class Prover:
         s1_ntt = NTT_vector(self.s1)
         t_ = multiply_vector_matrix(s1_ntt, A_ntt, n, m)
         self.t = sum_vectors(INTT_vector(t_), self.s2, n)
+        print(self.s1)
+        print(self.s2)
 
         return self.A, self.t
         
@@ -222,20 +228,39 @@ class Prover:
         else:
             return z_1, z_2
         
+def substract_vectors(a, b, d1):
+    return [a[i] - b[i] for i in range(d1)] 
+    
 class Verifier:
     def __init__(self):
         self.c = None
         
     def step1(self, A, t):
-        ones_neg_ones = [choice([-1, 1]) for _ in range(49)]
-        zeros = [0] * (d - 49)
-        self.c = ones_neg_ones + zeros
+        self.c = [0] * (d - 49) + [1]*49
         shuffle(self.c)
         return PR(self.c)
     
-    def step2():
-        #TODO
-        return
+    def step2(self, z1, z2, w_, A, t):
+        if z1 is None and z2 is None:
+            return False
+        if is_in_beta_range(z1, beta_prima) and is_in_beta_range(z2, beta_prima):
+            A_ntt = [NTT_vector(A[i]) for i in range(n)]
+            z1_ntt = NTT_vector(z1)
+            mult = multiply_vector_matrix(z1_ntt, A_ntt, n, m)
+            mult_intt = INTT_vector(mult)
+            sum_ = sum_vectors(mult_intt, z2, n)
+            c_ntt = NTT(self.c)
+            t_ntt = NTT_vector(t)
+            const = multiply_constant_vector(c_ntt, t_ntt)
+            const_intt = INTT_vector(const)
+            cond = substract_vectors(sum_, const_intt, n) == w_
+            if cond:
+                return True
+            else:
+                return False
+        else:
+            return False
+            
 
 
 def simulate_protocol():
@@ -245,10 +270,9 @@ def simulate_protocol():
     w = p.step1()
     c = v.step1(A, t)
     z1, z2 = p.step2(c)
+    boolean = v.step2(z1, z2, w, A, t)
     print(c)
     print(w)
-    print(z1, z2)
-    #TODO
+    print(boolean)
     return 
-
 simulate_protocol()

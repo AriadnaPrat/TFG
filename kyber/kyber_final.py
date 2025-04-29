@@ -2,6 +2,7 @@
 import numpy as np
 import random
 import time
+
 # Parámetros de Kyber-1024
 q = 3329  
 R = IntegerModRing(q)  
@@ -186,27 +187,55 @@ def NTT_vector(vector):
 def INTT_vector(vector):
     return [INTT(i) for i in vector]
 
+
+
 def keygen():
     A_ntt = create_matrix_ntt()
     s = create_vector(eta1, k)
     e = create_vector(eta1, k) 
-    s_ntt = [NTT(i) for i in s]
-    e_ntt = [NTT(i) for i in e]
+    s_ntt = NTT_vector(s)
+    e_ntt = NTT_vector(e)
     s_A_ntt = multiply_vector_matrix(s_ntt, A_ntt)
     
     t_ntt = sum_vectors(s_A_ntt, e_ntt) 
     
     return (A_ntt, t_ntt), s_ntt
 
-def encrypt(pk, m):
+
+def cbd(data: bytes, eta: int) -> list:
+    bits = ''.join(f'{b:08b}' for b in data)
+    poly = []
+    for i in range(0, n): #while len(poly) < n and i + 2 * eta <= len(data):
+        a = sum(int(bits[2*i*eta + j]) for j in range(eta))
+        b = sum(int(bits[2*i*eta + eta + j]) for j in range(eta))
+        poly.append(a - b)
+    return PR(poly)
+
+def PRF(seed, nonce, eta):
+    total = seed + format(nonce, 'b')
+    x = hashlib.shake_256(total.encode()).digest(64*eta)
+    return x
+    
+def create_vector_(eta: int, d: int, seed: bytes) -> tuple:
+    vec = []
+    nonce = 0
+    for _ in range(d):
+        output = PRF(seed, nonce, eta)
+        poly = cbd(output, eta)
+        vec.append(poly)
+        nonce += 1
+    return vec
+
+
+def encrypt(pk, m, rrho = 0):
     A, t = pk
-    r = create_vector(eta1, k) 
-    e1 = create_vector(eta2, k) 
-    e2 = create_vector(eta2, 1)[0] 
+    r = create_vector_(eta1, k, rrho)
+    e1 = create_vector_(eta2, k, rrho) 
+    e2 = create_vector_(eta2, 1, rrho)[0] 
     r_ntt = NTT_vector(r) 
     A_t = matrix_traspose(A)
     r_A = multiply_vector_matrix(r_ntt, A_t)
-    r_A_intt = INTT_vector(r_A) #[INTT(i) for i in r_A]
+    r_A_intt = INTT_vector(r_A) 
     u = sum_vectors(r_A_intt, e1) 
     r_t_intt = INTT(multiply_vector_vector(r_ntt, t))
     v =  r_t_intt + e2 + (q // 2) * Rk(m)
@@ -220,7 +249,7 @@ def decrypt(sk, cipher):
     u, v = cipher  
     u_ = [mod_switching(x, q, 2^du) for x in u]
     v_ = mod_switching(v, q, 2^dv)
-    u_ntt = NTT_vector(u_) #[NTT(i) for i in u_]
+    u_ntt = NTT_vector(u_) 
     u_sk = multiply_vector_vector(u_ntt, sk)
     u_sk_intt = INTT(u_sk)
     m_dec = v_ - u_sk_intt
@@ -228,16 +257,62 @@ def decrypt(sk, cipher):
 
     return Rk(m_dec_coeffs)
 
+import hashlib
+
+def H(m, pk):
+    A, t = pk 
+    A_ = sum(sum(A, []), [])
+    t_ = sum(t, [])
+    total = A_ + t_
+    coef_binarios = [[bin(j) for j in i.list()] for i in total]
+    coef_binarios = sum(coef_binarios, [])
+    mensaje_binario = ''.join(coef_binarios)
+    mm = ''.join([bin(j) for j in m])
+    hash_obj = hashlib.sha3_256(mensaje_binario.encode()).digest()
+    tt = ''.join([mm, ''.join(format(byte, '08b') for byte in hash_obj)]) 
+    hash_ = hashlib.sha3_512(tt.encode()).digest()
+    hash_ = ''.join(f'{byte:08b}' for byte in hash_)
+    return hash_
+      
+def KEM_keygen():
+    pk, sk = keygen()
+    return pk, sk
+
+def KEM_encaps(pk):
+    m = list(np.random.randint(0, 2, n))
+    hash_ = H(m, pk)
+    K, rrho = hash_[0:256], hash_[257:512]
+    c = encrypt(pk, m, rrho)
+    return K, c
+
+def KEM_decaps(sk, c, K):
+    m_prima = decrypt(sk, c)
+    hash_ = H(m_prima, pk)
+    K_prima, rrho_prima = hash_[0:256], hash_[257:512]
+    c_prima = encrypt(pk, m_prima, rrho_prima)
+    if c != c_prima:
+        return None
+    else:
+        return K_prima
 
 t0 = time.time()
 tree, r_list = build_tree(1, n)
-pk, sk = keygen()
-m = list(np.random.randint(0, 2, n))
+#pk, sk = keygen()
+#m = list(np.random.randint(0, 2, n))
 
-ciphertext = encrypt(pk, m)
-m_decrypted = decrypt(sk, ciphertext)
+#ciphertext = encrypt(pk, m)
+#m_decrypted = decrypt(sk, ciphertext)
+#tiempo_total = time.time() - t0
+#print(f"Original message: {m}")
+#print(f"Decrypted message: {m_decrypted}")
+#print("Does the original message match the decrypted one?:", m == [int(c) for c in m_decrypted.list()])
+#print(f"Elapsed real time: {tiempo_total:.6f} seconds")
+
+pk, sk = KEM_keygen()
+K, c = KEM_encaps(pk)
+k_shared=KEM_decaps(sk, c, K)
+print("Keys:", pk, sk)
+print("Encrypted:", c)
+print("k_shared:", k_shared)
 tiempo_total = time.time() - t0
-print(f"Original message: {m}")
-print(f"Decrypted message: {m_decrypted}")
-print("Does the original message match the decrypted one?:", m == [int(c) for c in m_decrypted.list()])
 print(f"Elapsed real time: {tiempo_total:.6f} seconds")
