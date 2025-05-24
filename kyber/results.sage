@@ -15,7 +15,22 @@ load("NTT_functions.sage")
 load("auxiliar_functions.sage")
 load("kyber.sage")
 tree, r_list = build_tree(1, n, q)
-def size_publickey():
+
+def size_publickey(k_):
+    bits_per_coef = ceil(log(q, 2))
+    num_polynomials = k_^2 + k_
+    total_coefficients = num_polynomials * n
+    total_bits = total_coefficients * bits_per_coef
+    total_bytes = ceil(total_bits / 8)
+    return total_bits, total_bytes
+
+def size_ct(k_):
+    bits_per_coef = ceil(log(q, 2))
+    num_polynomials = k_ + 1
+    total_coefficients = num_polynomials * n
+    total_bits = total_coefficients * bits_per_coef
+    total_bytes = ceil(total_bits / 8)
+    return total_bits, total_bytes
 
 ############################ kyber-512 ############################
 t0 = time.time()
@@ -28,12 +43,10 @@ t_total = time.time() - t0
 print("k_shared:", k_shared)
 print(f"Elapsed real time: {t_total:.6f} seconds")
 
-bits_per_coef = ceil(log(q, 2))
-num_polynomials = k^2
-total_coefficients = num_polynomials * n
-total_bits = total_coefficients * bits_per_coef
-total_bytes = ceil(total_bits / 8)
-print(f"Public Key Size: {total_bits} bits ({total_bytes} bytes)")
+total_bits_p, total_bytes_p = size_publickey(k)
+total_bits_c, total_bytes_c = size_ct(k)
+print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
+print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
 
 ############################ kyber-768 ############################
 t0 = time.time()
@@ -47,13 +60,10 @@ t_total = time.time() - t0
 
 print(f"Elapsed real time: {t_total:.6f} seconds")
 
-# Bits por coeficiente
-bits_per_coef = ceil(log(q, 2))
-num_polynomials = k^2
-total_coefficients = num_polynomials * n
-total_bits = total_coefficients * bits_per_coef
-total_bytes = ceil(total_bits / 8)
-print(f"Tamaño total: {total_bits} bits ({total_bytes} bytes)")
+total_bits_p, total_bytes_p = size_publickey(k)
+total_bits_c, total_bytes_c = size_ct(k)
+print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
+print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
 
 ############################ kyber-1024 ############################
 t0 = time.time()
@@ -67,10 +77,7 @@ t_total = time.time() - t0
 
 print(f"Elapsed real time: {t_total:.6f} seconds")
 
-# Bits por coeficiente
-bits_per_coef = ceil(log(q, 2))
-num_polynomials = k^2
-total_coefficients = num_polynomials * n
-total_bits = total_coefficients * bits_per_coef
-total_bytes = ceil(total_bits / 8)
-print(f"Tamaño total: {total_bits} bits ({total_bytes} bytes)")
+total_bits_p, total_bytes_p = size_publickey(k)
+total_bits_c, total_bytes_c = size_ct(k)
+print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
+print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
