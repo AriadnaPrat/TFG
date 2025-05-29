@@ -8,7 +8,7 @@ d = 256 #256
 n, m = 6, 5
 beta = 4       
 gamma = 49*4     
-beta_prima = 2^19 - gamma + 1
+beta_prima = 2^19 - gamma - 1
 delta_s = (q - 1)/32 - 1
 R = IntegerModRing(q)  
 PR.<X> = PolynomialRing(R)  
@@ -124,16 +124,14 @@ def INTT(poly):
 def multiply(a, b):
     list_ntt=[]
     for i in range(d):
-        list_ntt.append(a[i]*b[i])
+        list_ntt.append(a[i]*b[i] % q)
     return list_ntt
 
-
 def binomial(eta):
-    return random.randint(0, eta + 1) 
+    return random.randint(-eta, eta + 1) % q
 
 def binomial_sample(eta):
     return Rk([binomial(eta) for _ in range(d)])
-
 
 def create_vector(eta, dimension):
     return [binomial_sample(eta) for _ in range(dimension)]
@@ -172,7 +170,7 @@ def INTT_vector(vector):
 
 def is_in_beta_range(v, beta_bar):
     for x in v:
-        if not all(i <= beta_bar for i in x):
+        if not all((0 <= i <= beta_bar) or ((q - beta_bar) <= i <= (q - 1)) for i in x):
             return False
 
     return True 
@@ -196,16 +194,13 @@ class Prover:
         s1_ntt = NTT_vector(self.s1)
         t_ = multiply_vector_matrix(s1_ntt, A_ntt, n, m)
         self.t = sum_vectors(INTT_vector(t_), self.s2, n)
-        print(self.s1)
-        print(self.s2)
 
         return self.A, self.t
         
     def step1(self):
         self.y_1 = create_vector(gamma + beta_prima, m)
         self.y_2 = create_vector(gamma + beta_prima, n)
-        print(self.y_1)
-        print(self.y_2)
+
         y_1_ntt = NTT_vector(self.y_1)
         A_ntt = [NTT_vector(self.A[i]) for i in range(n)]
         y_1_A_ntt = multiply_vector_matrix(y_1_ntt, A_ntt, n, m)
@@ -222,7 +217,8 @@ class Prover:
         
         z_1 = sum_vectors(INTT_vector(z_1_),  self.y_1, m)
         z_2 = sum_vectors(INTT_vector(z_2_), self.y_2, n)
-        print("ddd:", z_1, z_2)
+        print(z_1)
+        print(beta_prima)
         if not is_in_beta_range(z_1, beta_prima) or not is_in_beta_range(z_2, beta_prima):
             return None, None
         else:
@@ -236,9 +232,9 @@ class Verifier:
         self.c = None
         
     def step1(self, A, t):
-        self.c = [0] * (d - 49) + [1]*49
+        self.c = generate_c() 
         shuffle(self.c)
-        return PR(self.c)
+        return Rk(self.c)
     
     def step2(self, z1, z2, w_, A, t):
         if z1 is None and z2 is None:
@@ -261,8 +257,6 @@ class Verifier:
         else:
             return False
             
-
-
 def simulate_protocol():
     v = Verifier()
     p = Prover()
@@ -270,9 +264,10 @@ def simulate_protocol():
     w = p.step1()
     c = v.step1(A, t)
     z1, z2 = p.step2(c)
+    print(z1, z2)
     boolean = v.step2(z1, z2, w, A, t)
-    print(c)
-    print(w)
+    
     print(boolean)
     return 
+
 simulate_protocol()
