@@ -127,14 +127,14 @@ def multiply(a, b):
         list_ntt.append(a[i]*b[i] % q)
     return list_ntt
 
-def binomial(eta):
+def sample(eta):
     return random.randint(-eta, eta + 1) % q
 
-def binomial_sample(eta):
-    return Rk([binomial(eta) for _ in range(d)])
+def sample_uniform(eta):
+    return Rk([sample(eta) for _ in range(d)])
 
 def create_vector(eta, dimension):
-    return [binomial_sample(eta) for _ in range(dimension)]
+    return [sample_uniform(eta) for _ in range(dimension)]
 
 def sum_vectors(a, b, d1):
     return [a[i] + b[i] for i in range(d1)] 

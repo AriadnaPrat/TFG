@@ -3,8 +3,7 @@ import random
 import time
 import hashlib
 import sys
-
-# Kyber-1024 parameters
+import statistics
 
 q, n = 3329, 256
 R = IntegerModRing(q)  
@@ -32,52 +31,105 @@ def size_ct(k_):
     total_bytes = ceil(total_bits / 8)
     return total_bits, total_bytes
 
-############################ kyber-512 ############################
-t0 = time.time()
-k = 2
-kyber = Kyber_KEM(k, n, 3, 2, 10, 4, q)
-pk, sk = kyber.KEM_keygen()
-K, c = kyber.KEM_encaps(pk)
-k_shared=kyber.KEM_decaps(sk, c, K)
-t_total = time.time() - t0
-print("k_shared:", k_shared)
-print(f"Elapsed real time: {t_total:.6f} seconds")
+def size_secretkey(k_):
+    bits_per_coef = ceil(log(q, 2))
+    num_polynomials = 2 * k_ + 1   # 2*k polinomios + 1 polinomio extra (semilla pública)
+    total_coefficients = num_polynomials * n
+    total_bits = total_coefficients * bits_per_coef
+    total_bytes = ceil(total_bits / 8)
+    return total_bits, total_bytes
 
-total_bits_p, total_bytes_p = size_publickey(k)
-total_bits_c, total_bytes_c = size_ct(k)
-print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
-print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
+kyber_configs = [
+    {"name": "Kyber-512", "k": 2, "eta1": 3, "eta2": 2, "du": 10, "dv": 4},
+    {"name": "Kyber-768", "k": 3, "eta1": 2, "eta2": 2, "du": 10, "dv": 4},
+    {"name": "Kyber-1024", "k": 4, "eta1": 2, "eta2": 2, "du": 11, "dv": 5},
+]
 
-############################ kyber-768 ############################
-t0 = time.time()
-k = 3
-kyber = Kyber_KEM(k, n, 2, 2, 10, 4, q)
-pk, sk = kyber.KEM_keygen()
-K, c = kyber.KEM_encaps(pk)
-k_shared=kyber.KEM_decaps(sk, c, K)
-print("k_shared:", k_shared)
-t_total = time.time() - t0
+for config in kyber_configs:
+    print(f"############################ {config['name']} ############################")
 
-print(f"Elapsed real time: {t_total:.6f} seconds")
+    k = config["k"]
+    kyber = Kyber_KEM(k, n, config["eta1"], config["eta2"], config["du"], config["dv"], q)
+    
+    # Medir tiempo de KeyGen
+    t0_keygen = time.process_time()
+    pk, sk = kyber.KEM_keygen()
+    t_keygen = time.process_time() - t0_keygen
 
-total_bits_p, total_bytes_p = size_publickey(k)
-total_bits_c, total_bytes_c = size_ct(k)
-print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
-print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
+    # Medir tiempo de Encapsulación
+    t0_encaps = time.process_time()
+    K, c = kyber.KEM_encaps(pk)
+    t_encaps = time.process_time() - t0_encaps
 
-############################ kyber-1024 ############################
-t0 = time.time()
-k = 4
-kyber = Kyber_KEM(k, n, 2, 2, 11, 5, q)
-pk, sk = kyber.KEM_keygen()
-K, c = kyber.KEM_encaps(pk)
-k_shared=kyber.KEM_decaps(sk, c, K)
-print("k_shared:", k_shared)
-t_total = time.time() - t0
+    # Medir tiempo de Decapsulación
+    t0_decaps = time.process_time()
+    k_shared = kyber.KEM_decaps(sk, c, K)
+    t_decaps = time.process_time() - t0_decaps
 
-print(f"Elapsed real time: {t_total:.6f} seconds")
+    # Mostrar resultados
+    print("k_shared:", k_shared)
+    print(f"KeyGen time   : {t_keygen:.6f} seconds")
+    print(f"Encaps time   : {t_encaps:.6f} seconds")
+    print(f"Decaps time   : {t_decaps:.6f} seconds")
 
-total_bits_p, total_bytes_p = size_publickey(k)
-total_bits_c, total_bytes_c = size_ct(k)
-print(f"Public Key Size: {total_bits_p} bits ({total_bytes_p} bytes)")
-print(f"Ciphertext: {total_bits_c} bits ({total_bytes_c} bytes)")
+    total_bits_p, total_bytes_p = size_publickey(k)
+    total_bits_s, total_bytes_s = size_secretkey(k)
+    total_bits_c, total_bytes_c = size_ct(k)
+
+    print(f"Public Key Size : {total_bits_p} bits ({total_bytes_p} bytes)")
+    print(f"Secret Key Size : {total_bits_s} bits ({total_bytes_s} bytes)")
+    print(f"Ciphertext Size : {total_bits_c} bits ({total_bytes_c} bytes)\n")
+
+
+num_runs = 10
+
+results = []
+
+for config in kyber_configs:
+    keygen_times = []
+    encaps_times = []
+    decaps_times = []
+
+    k = config["k"]
+    kyber = Kyber_KEM(k, n, config["eta1"], config["eta2"], config["du"], config["dv"], q)
+
+    for _ in range(num_runs):
+        t0_keygen = time.process_time()
+        pk, sk = kyber.KEM_keygen()
+        t_keygen = time.process_time() - t0_keygen
+        keygen_times.append(t_keygen)
+
+        t0_encaps = time.process_time()
+        K, c = kyber.KEM_encaps(pk)
+        t_encaps = time.process_time() - t0_encaps
+        encaps_times.append(t_encaps)
+
+        t0_decaps = time.process_time()
+        k_shared = kyber.KEM_decaps(sk, c, K)
+        t_decaps = time.process_time() - t0_decaps
+        decaps_times.append(t_decaps)
+
+    keygen_avg = statistics.mean(keygen_times)
+    keygen_med = statistics.median(keygen_times)
+    encaps_avg = statistics.mean(encaps_times)
+    encaps_med = statistics.median(encaps_times)
+    decaps_avg = statistics.mean(decaps_times)
+    decaps_med = statistics.median(decaps_times)
+
+    results.append({
+        "name": config["name"],
+        "keygen_avg": keygen_avg,
+        "keygen_med": keygen_med,
+        "encaps_avg": encaps_avg,
+        "encaps_med": encaps_med,
+        "decaps_avg": decaps_avg,
+        "decaps_med": decaps_med
+    })
+
+print("Versión\tKeyGen Med (s)\tKeyGen Avg (s)\tEncaps Med (s)\tEncaps Avg (s)\tDecaps Med (s)\tDecaps Avg (s)")
+for res in results:
+    print(f"{res['name']}\t"
+          f"{res['keygen_med']:.6f}\t{res['keygen_avg']:.6f}\t"
+          f"{res['encaps_med']:.6f}\t{res['encaps_avg']:.6f}\t"
+          f"{res['decaps_med']:.6f}\t{res['decaps_avg']:.6f}")
+
