@@ -21,7 +21,7 @@ def NTT_prev(a, node, depth, list_):
 def INTT_prev(ntt_list, node, depth):
     a=[0]*depth
     r=node.right
-    r=R(r.residue)
+    r_inv=R(r.residue)
     d = depth//2
     
     if depth==4:
@@ -29,14 +29,14 @@ def INTT_prev(ntt_list, node, depth):
         degree_half = n // 2
         for i in range(0, d):
             a[i] = (b[i] + c[i]) / degree_half
-            a[i + depth//2] = (r^(-1) * (b[i] - c[i])) / degree_half
+            a[i + depth//2] = (r_inv * (b[i] - c[i])) / degree_half
         return PR(a)
     else:
         b = INTT_prev(ntt_list[:d//2], node.left, depth//2) 
         c = INTT_prev(ntt_list[d//2:], node.right, depth//2) 
         for i in range(0, d):
             a[i] = (b[i] + c[i])
-            a[i + d] = (r^(-1) * (b[i] - c[i]))
+            a[i + d] = (r_inv * (b[i] - c[i]))
 
         return PR(a)  
     
@@ -46,5 +46,5 @@ def NTT(poly, degree):
     return list_
 
 def INTT(poly):
-    result = INTT_prev(poly, tree.root, n)
+    result = INTT_prev(poly, tree_inv.root, n)
     return result

@@ -14,6 +14,7 @@ load("NTT_functions.sage")
 load("auxiliar_functions.sage")
 load("kyber.sage")
 tree, r_list = build_tree(1, n, q)
+tree_inv = build_inverse_tree_from_sage(tree, q, 1)
 
 def size_publickey(k_):
     bits_per_coef = ceil(log(q, 2))

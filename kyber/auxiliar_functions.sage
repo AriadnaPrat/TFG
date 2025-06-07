@@ -25,7 +25,7 @@ def binomial(eta):
     return sum(random.randint(0, 1) for _ in range(eta)) - sum(random.randint(0, 1) for _ in range(eta))
 
 def binomial_sample(eta, d):
-    return Rk([binomial(eta) for _ in range(d)])
+    return PR([binomial(eta) for _ in range(d)])
 
 def multiply_vector_matrix(v, M, dimension, d_):
     resultado = []

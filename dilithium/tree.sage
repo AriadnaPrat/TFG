@@ -1,3 +1,4 @@
+
 class ResidueTreeNode:
     def __init__(self, residue):
         self.residue = residue  
@@ -33,7 +34,7 @@ class ResidueTree:
             self.display(node.right, level + 1)
 
 def build_residue_tree(tree, node, mod_value, depth, r_list):
-    if depth == 2:
+    if depth == 1:
         r_list.append(node.residue)
         return
 
@@ -50,28 +51,8 @@ def build_residue_tree(tree, node, mod_value, depth, r_list):
     except ValueError:
         return
     
-def build_tree(alpha, degree, q1):
+def build_tree(alpha, degree):
     r_list = []
     tree = ResidueTree(alpha)
-    build_residue_tree(tree, tree.root, q1, degree, r_list)
+    build_residue_tree(tree, tree.root, q, degree, r_list)
     return tree, r_list
-
-def invert_residue_tree_sage(original_root, q):
-    if original_root is None:
-        return None
-
-    try:
-        inv_residue = original_root.residue^-1 % q
-    except ZeroDivisionError:
-        return None  
-
-    new_node = ResidueTreeNode(inv_residue)
-    new_node.left = invert_residue_tree_sage(original_root.left, q)
-    new_node.right = invert_residue_tree_sage(original_root.right, q)
-    return new_node
-
-def build_inverse_tree_from_sage(original_tree, q, alpha):
-    inverse_root = invert_residue_tree_sage(original_tree.root, q)
-    inverse_tree = ResidueTree(alpha)  
-    inverse_tree.root = inverse_root
-    return inverse_tree
