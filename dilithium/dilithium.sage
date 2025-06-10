@@ -18,7 +18,7 @@ load("tree.sage")
 load("NTT.sage")
 load("auxiliar_functions.sage")
 tree, r_list = build_tree(1, d)
-
+tree_inv = build_inverse_tree_from_sage(tree, q, 1)
 class Prover:
     def __init__(self):
         self.y_1 = None
