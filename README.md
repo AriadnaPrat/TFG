@@ -24,10 +24,10 @@ Once the installation is complete, you can launch SageMath by running.
 
 We have two protocols to execute: Kyber and Dilithium
 
-To execute Kyber, follow the next steps:
+To execute the benchmarking of kyber, follow the next steps:
 ```bash
 cd kyber
-sage kyber.sage
+sage results.sage
 ```
 
 
