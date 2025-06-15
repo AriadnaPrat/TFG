@@ -2,6 +2,8 @@
 import random
 from random import choice, shuffle
 import numpy as np
+
+#Official Parameters Security Level 3
 q =  2^23 - 2^13 + 1     
 k = 4
 d = 256       
@@ -18,7 +20,9 @@ load("tree.sage")
 load("NTT.sage")
 load("auxiliar_functions.sage")
 tree, r_list = build_tree(1, d)
-tree_inv = build_inverse_tree_from_sage(tree, q, 1)
+tree_inv = build_inverse_tree_from(tree, q, 1)
+
+#Simulate the Prover role
 class Prover:
     def __init__(self):
         self.y_1 = None
@@ -41,6 +45,7 @@ class Prover:
 
         return self.A, self.t
         
+    #Commitment
     def step1(self):
         self.y_1 = create_vector(gamma + beta_prima, m)
         self.y_2 = create_vector(gamma + beta_prima, n)
@@ -65,11 +70,13 @@ class Prover:
             return None, None
         else:
             return z_1, z_2
-    
+
+#Simulate the Verifier role
 class Verifier:
     def __init__(self):
         self.c = None
-        
+    
+    #Challenge
     def step1(self, A, t):
         self.c = generate_c() 
         shuffle(self.c)
@@ -95,7 +102,8 @@ class Verifier:
                 return False
         else:
             return False
-            
+
+#We simulate the scheme Dilithium
 def simulate_protocol():
     v = Verifier()
     p = Prover()
