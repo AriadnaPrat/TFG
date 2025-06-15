@@ -39,7 +39,8 @@ def INTT_prev(ntt_list, node, depth):
             a[i + d] = (r_inv * (b[i] - c[i]))
 
         return PR(a)  
-    
+
+
 def NTT(poly, degree):
     list_ = []
     NTT_prev(poly, tree.root, degree, list_)

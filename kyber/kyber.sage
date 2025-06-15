@@ -1,4 +1,4 @@
-
+#Class Kyber
 class Kyber_KEM:
     def __init__(self, k_, n_, eta_1, eta_2, du_, dv_, q_):
         self.q = q_
