@@ -11,7 +11,6 @@ n, m = 6, 5
 beta = 4       
 gamma = 49*4     
 beta_prima = 2^19 - gamma - 1
-delta_s = (q - 1)/32 - 1
 R = IntegerModRing(q)  
 PR.<X> = PolynomialRing(R)  
 Rk = PR.quotient(X^d + 1)  
@@ -112,7 +111,12 @@ def simulate_protocol():
     c = v.step1(A, t)
     z1, z2 = p.step2(c)
     boolean = v.step2(z1, z2, w, A, t)
-    print(boolean)
-    return 
+    #print(boolean)
+    return boolean
 
-simulate_protocol()
+while True:
+    boolean = simulate_protocol()
+    if boolean != False:
+        print(boolean)
+        break
+
