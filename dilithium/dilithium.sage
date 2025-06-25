@@ -82,8 +82,6 @@ class Verifier:
         return Rk(self.c)
     
     def step2(self, z1, z2, w_, A, t):
-        if z1 is None and z2 is None:
-            return False
         if is_in_beta_range(z1, beta_prima) and is_in_beta_range(z2, beta_prima):
             A_ntt = [NTT_vector(A[i]) for i in range(n)]
             z1_ntt = NTT_vector(z1)
@@ -103,20 +101,24 @@ class Verifier:
             return False
 
 #We simulate the scheme Dilithium
+v = Verifier()
+p = Prover()
+
 def simulate_protocol():
-    v = Verifier()
-    p = Prover()
     A, t = p.keygen()
     w = p.step1()
     c = v.step1(A, t)
     z1, z2 = p.step2(c)
-    boolean = v.step2(z1, z2, w, A, t)
     #print(boolean)
-    return boolean
+    return z1, z2, w, A, t
 
 while True:
-    boolean = simulate_protocol()
-    if boolean != False:
-        print(boolean)
-        break
+    z1, z2, w, A, t = simulate_protocol()
+    if z1 is None and z2 is None:
+            continue
+    else:
+        boolean = v.step2(z1, z2, w, A, t)
+        if boolean != False:
+            print("Verification:", boolean)
+            break
 
